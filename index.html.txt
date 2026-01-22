@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- FB 分享標籤 - v3.4 終極修復 -->
+    <meta property="og:title" content="🍅 白癡番茄鐘 - 起來尿尿了！">
+    <meta property="og:description" content="你像個白癡，蠢蛋，起來尿尿了．．．．一個會羞辱你的專注工具。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://biochiang.github.io/stupid-pomodoro/">
+    <meta property="og:image" content="https://img.icons8.com/emoji/512/tomato-emoji.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:site_name" content="白癡番茄鐘">
+
+    <title>v3.4 🍅 白癡番茄鐘</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; transition: background-color 0.5s ease; }
+        .tomato-shake { animation: shake 0.5s infinite; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-3px, 0px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .bg-work { background-color: #ef4444; }
+        .bg-break { background-color: #22c55e; }
+        .bg-idle { background-color: #64748b; }
+    </style>
+</head>
+<body class="bg-idle min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center relative overflow-hidden">
+        <div id="status-bg" class="absolute top-0 left-0 w-full h-2 bg-slate-400 transition-all duration-500"></div>
+
+        <h1 class="text-2xl font-black text-slate-800 mb-1">白癡番茄鐘 v3.4</h1>
+        <p class="text-xs text-slate-400 mb-6 font-bold uppercase">FB 強制刷新版</p>
+
+        <div class="mb-6 space-y-3">
+            <div class="flex gap-4 bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
+                <div class="flex-1">
+                    <label class="block text-xs font-black text-slate-400 mb-1">專注(分)</label>
+                    <input type="number" id="focus-input" value="25" step="0.1" class="w-full bg-white border-2 border-slate-200 rounded-xl px-2 py-2 text-center font-black text-xl text-red-500 outline-none">
+                </div>
+                <div class="flex-1 border-l-2 border-slate-100 pl-4">
+                    <label class="block text-xs font-black text-slate-400 mb-1">休息(分)</label>
+                    <input type="number" id="break-input" value="5" step="0.1" class="w-full bg-white border-2 border-slate-200 rounded-xl px-2 py-2 text-center font-black text-xl text-green-500 outline-none">
+                </div>
+            </div>
+            <div class="flex justify-center gap-2">
+                <button onclick="setQuickTime(0.5)" class="text-[10px] font-bold px-3 py-1 bg-red-100 text-red-600 rounded-full">30s</button>
+                <button onclick="setQuickTime(1)" class="text-[10px] font-bold px-3 py-1 bg-slate-100 text-slate-500 rounded-full">1m</button>
+            </div>
+        </div>
+
+        <div id="tomato-container" class="relative w-32 h-32 mx-auto mb-4 transition-transform duration-300">
+            <svg viewBox="0 0 100 100" class="w-full h-full">
+                <path d="M50 10 C55 25 70 20 75 15 C70 30 55 35 50 35 C45 35 30 30 25 15 C30 20 45 25 50 10" fill="#15803d" />
+                <circle cx="50" cy="55" r="40" fill="#dc2626" />
+                <g id="eyes"><circle cx="35" cy="50" r="4" fill="white" /><circle cx="65" cy="50" r="4" fill="white" /><circle id="pupil-l" cx="35" cy="50" r="2" fill="black" /><circle id="pupil-r" cx="65" cy="50" r="2" fill="black" /></g>
+                <path id="mouth" d="M40 70 Q50 75 60 70" stroke="black" stroke-width="2" fill="none" />
+            </svg>
+        </div>
+
+        <div id="timer" class="text-7xl font-black text-slate-800 mb-2 tabular-nums">25:00</div>
+        <div class="min-h-[70px] flex items-center justify-center mb-6 px-4">
+            <p id="message" class="text-sm font-bold text-slate-600 italic">「部署完後，請點下方橘色按鈕分享。」</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <button id="start-btn" class="bg-slate-800 text-white font-black py-4 rounded-2xl shadow-lg">啟動</button>
+            <button onclick="location.reload()" class="bg-slate-200 text-slate-800 font-black py-4 rounded-2xl">重置</button>
+        </div>
+
+        <div class="mt-8 space-y-2">
+            <button onclick="shareLink()" class="w-full bg-orange-500 text-white text-xs font-bold py-3 rounded-lg shadow-md hover:bg-orange-600">
+                🚀 強制刷新並分享到 Facebook
+            </button>
+            <button onclick="speakInsult()" class="w-full text-[10px] text-slate-400 underline">🔊 測試語音</button>
+        </div>
+    </div>
+
+    <script>
+        let timerId = null, isWorkMode = true, timeLeft = 25 * 60;
+        const timerDisplay = document.getElementById('timer');
+        const focusInput = document.getElementById('focus-input');
+        const breakInput = document.getElementById('break-input');
+
+        function shareLink() {
+            const url = `https://biochiang.github.io/stupid-pomodoro/?t=${Date.now()}`;
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
+        }
+
+        function speakInsult() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const msg = new SpeechSynthesisUtterance("你像個白癡，蠢蛋，起來尿尿了．．．．");
+                msg.lang = 'zh-TW';
+                window.speechSynthesis.speak(msg);
+            }
+        }
+
+        function updateDisplay() {
+            const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+            timerDisplay.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            const total = (isWorkMode ? focusInput.value : breakInput.value) * 60;
+            document.getElementById('status-bg').style.width = `${(timeLeft / total) * 100}%`;
+        }
+
+        function setQuickTime(min) { if (!timerId) { focusInput.value = min; timeLeft = min * 60; updateDisplay(); } }
+
+        document.getElementById('start-btn').addEventListener('click', function() {
+            if (timerId) {
+                clearInterval(timerId); timerId = null; this.textContent = "繼續";
+                document.body.className = "bg-idle min-h-screen flex items-center justify-center p-4";
+            } else {
+                this.textContent = "暫停";
+                document.body.className = isWorkMode ? "bg-work min-h-screen flex items-center justify-center p-4" : "bg-break min-h-screen flex items-center justify-center p-4";
+                timerId = setInterval(() => {
+                    timeLeft--; updateDisplay();
+                    if (timeLeft <= 0) {
+                        clearInterval(timerId); timerId = null;
+                        if (isWorkMode) {
+                            isWorkMode = false; timeLeft = breakInput.value * 60;
+                            document.getElementById('message').textContent = "「你像個白癡，蠢蛋，起來尿尿了．．．．」";
+                            speakInsult();
+                        } else {
+                            isWorkMode = true; timeLeft = focusInput.value * 60;
+                        }
+                        updateDisplay(); this.textContent = "啟動";
+                    }
+                }, 1000);
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            const pupils = [document.getElementById('pupil-l'), document.getElementById('pupil-r')];
+            const rect = document.getElementById('tomato-container').getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2, centerY = rect.top + rect.height / 2;
+            pupils.forEach(pupil => {
+                const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+                pupil.setAttribute('cx', parseFloat(pupil.previousElementSibling.getAttribute('cx')) + Math.cos(angle) * 2.5);
+                pupil.setAttribute('cy', parseFloat(pupil.previousElementSibling.getAttribute('cy')) + Math.sin(angle) * 2.5);
+            });
+        });
+        updateDisplay();
+    </script>
+</body>
+</html>
